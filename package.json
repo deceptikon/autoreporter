@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 nodemon index.js $NODE_LOGIN $NODE_PASS $NODE_KERIO_IP",
+    "dev": "export $(cat .env | xargs) && NODE_TLS_REJECT_UNAUTHORIZED=0 nodemon index.js $NODE_LOGIN $NODE_PASS $NODE_KERIO_IP",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
