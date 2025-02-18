@@ -1,5 +1,5 @@
 const axios = require('axios');
-const xlsx = require('xlsx'); // Add this line
+const fs = require('fs');
 
 // Function to create an Axios instance
 function createApiInstance(baseURL) {
@@ -63,14 +63,6 @@ async function queryKerio(api, method, params = {}) {
   }
 }
 
-// Function to create an XLS file
-function createXLSFile(data, fileName) {
-  const worksheet = xlsx.utils.json_to_sheet(data);
-  const workbook = xlsx.utils.book_new();
-  xlsx.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-  xlsx.writeFile(workbook, fileName);
-}
-
 // Function to query traffic usage statistics
 async function getTrafficUsage(api) {
   return await queryKerio(api, "UserStatistics.get", {
@@ -83,37 +75,8 @@ async function getTrafficUsage(api) {
   });
 }
 
-// Function to split users into groups based on name prefixes
-function splitUsersIntoGroups(users) {
-  const groups = {};
-  users.forEach(user => {
-    if (user.type !== 'UserStatisticUser') return; // Filter out non-user statistics
-    const prefix = user.userName.split('_')[0]; // Assuming prefix is before an underscore
-    if (!groups[prefix]) {
-      groups[prefix] = [];
-    }
-    groups[prefix].push(user);
-  });
-  return groups;
-}
-
-// Function to create Excel tables for each group
-function createExcelTablesForGroups(groups) {
-  Object.keys(groups).forEach(groupName => {
-    const data = groups[groupName];
-    createXLSFile(data, `${groupName}_traffic_usage.xlsx`);
-  });
-}
-
-// Example usage
-(async () => {
-  const baseURL = `https://${process.argv[2]}:4081/admin/api/jsonrpc/`;
-  const username = process.argv[3];
-  const password = process.argv[4];
-  if (!baseURL || !username || !password) {
-    console.error('Error: Please provide baseURL, username, and password as command line arguments.');
-    process.exit(1);
-  }
+// Main function to login, query traffic usage, and save results to a JSON file
+async function fetchTrafficUsage(baseURL, username, password) {
   const api = createApiInstance(baseURL);
   await login(api, username, password);
   const response = await getTrafficUsage(api);
@@ -121,19 +84,23 @@ function createExcelTablesForGroups(groups) {
   // Assuming response.data.result.list contains the traffic usage data
   if (response && response.data && response.data.result && response.data.result.list) {
     const users = response.data.result.list;
-    console.warn(users);
     if (!users || users.length === 0) {
       console.error('Error: No users returned.');
       return;
     }
-    const groups = splitUsersIntoGroups(users);
-    createExcelTablesForGroups(groups);
+    fs.writeFileSync('traffic_usage.json', JSON.stringify(users, null, 2));
+    console.log('Traffic usage data saved to traffic_usage.json');
   } else {
     console.error('Error: No data returned from the API.');
   }
-})();
+}
 
-module.exports = {
-  login,
-  queryKerio
-};
+// Example usage
+const baseURL = `https://${process.argv[4] || '192.168.0.101'}:4081/admin/api/jsonrpc/`;
+const username = process.argv[2];
+const password = process.argv[3];
+if (!baseURL || !username || !password) {
+  console.error('Error: Please provide baseURL, username, and password as command line arguments.');
+  process.exit(1);
+}
+fetchTrafficUsage(baseURL, username, password);
