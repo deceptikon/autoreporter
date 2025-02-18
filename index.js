@@ -107,9 +107,9 @@ function createExcelTablesForGroups(groups) {
 
 // Example usage
 (async () => {
-  const baseURL = `https://${process.argv[2]}:4081/admin/api/jsonrpc/`;
-  const username = process.argv[3];
-  const password = process.argv[4];
+  const baseURL = `https://${process.argv[4] || '192.168.0.101'}:4081/admin/api/jsonrpc/`;
+  const username = process.argv[2];
+  const password = process.argv[3];
   if (!baseURL || !username || !password) {
     console.error('Error: Please provide baseURL, username, and password as command line arguments.');
     process.exit(1);

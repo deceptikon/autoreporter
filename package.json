@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 nodemon index.js",
+    "dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 nodemon index.js admin 1q",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
