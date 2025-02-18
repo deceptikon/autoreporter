@@ -73,12 +73,13 @@ function createXLSFile(data, fileName) {
 
 // Function to query traffic usage statistics
 async function getTrafficUsage() {
-  return await queryKerio("TrafficStats.get", {
+  return await queryKerio("UserStatistics.get", {
     query: {
       start: 0,
       limit: -1,
       orderBy: [{ columnName: "userName", direction: "Asc" }],
     },
+    refresh: true // Set refresh to true
   });
 }
 
@@ -86,6 +87,7 @@ async function getTrafficUsage() {
 function splitUsersIntoGroups(users) {
   const groups = {};
   users.forEach(user => {
+    if (user.type !== 'UserStatisticUser') return; // Filter out non-user statistics
     const prefix = user.userName.split('_')[0]; // Assuming prefix is before an underscore
     if (!groups[prefix]) {
       groups[prefix] = [];
@@ -108,11 +110,18 @@ function createExcelTablesForGroups(groups) {
   await login('admin', '1q'); // Replace with your actual username and password
   const response = await getTrafficUsage();
 
-  // Assuming response.data.result contains the traffic usage data
-  if (response && response.data && response.data.result) {
-    const users = response.data.result;
+  // Assuming response.data.result.list contains the traffic usage data
+  if (response && response.data && response.data.result && response.data.result.list) {
+    const users = response.data.result.list;
+    console.warn(users);
+    if (!users || users.length === 0) {
+      console.error('Error: No users returned.');
+      return;
+    }
     const groups = splitUsersIntoGroups(users);
     createExcelTablesForGroups(groups);
+  } else {
+    console.error('Error: No data returned from the API.');
   }
 })();
 
