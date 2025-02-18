@@ -1,5 +1,5 @@
 const axios = require('axios');
-const xlsx = require('xlsx'); // Add this line
+const ExcelJS = require('exceljs');
 
 // Function to create an Axios instance
 function createApiInstance(baseURL) {
@@ -63,14 +63,6 @@ async function queryKerio(api, method, params = {}) {
   }
 }
 
-// Function to create an XLS file
-function createXLSFile(data, fileName) {
-  const worksheet = xlsx.utils.json_to_sheet(data);
-  const workbook = xlsx.utils.book_new();
-  xlsx.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-  xlsx.writeFile(workbook, fileName);
-}
-
 // Function to query traffic usage statistics
 async function getTrafficUsage(api) {
   return await queryKerio(api, "UserStatistics.get", {
@@ -101,8 +93,44 @@ function splitUsersIntoGroups(users) {
 function createExcelTablesForGroups(groups) {
   Object.keys(groups).forEach(groupName => {
     const data = groups[groupName];
-    createXLSFile(data, `${groupName}_traffic_usage.xlsx`);
+    // createXLSFile(data, `${groupName}_traffic_usage.xlsx`);
   });
+}
+
+async function generateReport(data) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Report');
+
+  const groupedData = data.reduce((acc, item) => {
+    const prefix = item.userName.split('_')[0];
+    if (!acc[prefix]) acc[prefix] = [];
+    acc[prefix].push(item);
+    return acc;
+  }, {});
+
+  let rowIndex = 1;
+
+  for (const prefix in groupedData) {
+    const group = groupedData[prefix].sort((a, b) => a.userName.localeCompare(b.userName));
+    worksheet.getCell(`A${rowIndex}`).value = prefix;
+    rowIndex++;
+
+    group.forEach((item, index) => {
+      const fullName = item.fullName.replace(/^.*?_/, '');
+      worksheet.getCell(`A${rowIndex}`).value = index + 1;
+      worksheet.getCell(`B${rowIndex}`).value = fullName;
+      worksheet.getCell(`C${rowIndex}`).value = item.data.month;
+      rowIndex++;
+    });
+
+    const totalTraffic = group.reduce((sum, item) => sum + item.data.month, 0);
+    worksheet.getCell(`B${rowIndex}`).value = 'Total';
+    worksheet.getCell(`C${rowIndex}`).value = totalTraffic;
+    rowIndex += 2;
+  }
+
+  await workbook.xlsx.writeFile('report.xlsx');
+
 }
 
 // Example usage
@@ -128,6 +156,7 @@ function createExcelTablesForGroups(groups) {
     }
     const groups = splitUsersIntoGroups(users);
     createExcelTablesForGroups(groups);
+    await generateReport(users); // Call the function with your data
   } else {
     console.error('Error: No data returned from the API.');
   }
