@@ -101,6 +101,18 @@ async function generateReport(data) {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Report');
 
+  // Load the sample workbook
+  const sampleWorkbook = new ExcelJS.Workbook();
+  await sampleWorkbook.xlsx.readFile('sample.xlsx');
+  const sampleSheet = sampleWorkbook.getWorksheet(1);
+
+  // Force calculation
+  sampleWorkbook.calcProperties.fullCalcOnLoad = true;
+  await sampleWorkbook.xlsx.readFile('sample.xlsx');
+
+  // Log merged cells from the sample Excel file
+  console.log(`Sample Sheet Merges:`, sampleSheet.merges);
+
   const groupedData = data.reduce((acc, item) => {
     const prefix = item.userName.split('_')[0];
     if (!acc[prefix]) acc[prefix] = [];
@@ -111,6 +123,40 @@ async function generateReport(data) {
   let rowIndex = 1;
 
   for (const prefix in groupedData) {
+    // Copy the first two rows from sample.xlsx
+    for (let i = 1; i <= 2; i++) {
+      const sourceRow = sampleSheet.getRow(i);
+      const targetRow = worksheet.getRow(rowIndex);
+
+      sourceRow.eachCell((cell, colNumber) => {
+        const targetCell = targetRow.getCell(colNumber);
+        targetCell.value = cell.value;
+        console.log('--',  cell.master)
+
+        // Copy individual style properties, creating new objects
+        targetCell.font = cell.font ? {
+          ...cell.font,
+          size: cell.font.size, // Ensure font size is copied
+          color: cell.font.color?.argb ? { argb: cell.font.color.argb } : cell.font.color?.theme ? { argb: 'FF000000' } : cell.font.color
+        } : undefined;
+        targetCell.fill = cell.fill ? {
+          ...cell.fill,
+          fgColor: cell.fill.fgColor?.argb ? { argb: cell.fill.fgColor.argb } : cell.fill.fgColor,
+          bgColor: cell.fill.bgColor?.argb ? { argb: cell.fill.bgColor.argb } : cell.fill.bgColor
+        } : undefined;
+        targetCell.alignment = cell.alignment ? { ...cell.alignment } : undefined;
+        targetCell.border = cell.border ? {
+          left: cell.border.left ? { ...cell.border.left } : { style: 'none' },
+          right: cell.border.right ? { ...cell.border.right } : { style: 'none' },
+          top: cell.border.top ? { ...cell.border.top } : { style: 'none' },
+          bottom: cell.border.bottom ? { ...cell.border.bottom } : { style: 'none' }
+        } : undefined;
+        targetCell.numFmt = cell.numFmt;
+        targetCell.protection = cell.protection ? { ...cell.protection } : undefined;
+      });
+      rowIndex++;
+    }
+
     const group = groupedData[prefix].sort((a, b) => a.userName.localeCompare(b.userName));
     worksheet.getCell(`A${rowIndex}`).value = prefix;
     rowIndex++;
@@ -126,11 +172,45 @@ async function generateReport(data) {
     const totalTraffic = group.reduce((sum, item) => sum + item.data.month, 0);
     worksheet.getCell(`B${rowIndex}`).value = 'Total';
     worksheet.getCell(`C${rowIndex}`).value = totalTraffic;
-    rowIndex += 2;
+    rowIndex++;
+
+    // Copy rows 4 to 7 from sample.xlsx
+    for (let i = 4; i <= 7; i++) {
+      const sourceRow = sampleSheet.getRow(i);
+      const targetRow = worksheet.getRow(rowIndex);
+
+      sourceRow.eachCell((cell, colNumber) => {
+        const targetCell = targetRow.getCell(colNumber);
+        targetCell.value = cell.value;
+
+        // Copy individual style properties, creating new objects
+        targetCell.font = cell.font ? {
+          ...cell.font,
+          size: cell.font.size, // Ensure font size is copied
+          color: cell.font.color?.argb ? { argb: cell.font.color.argb } : cell.font.color?.theme ? { argb: 'FF000000' } : cell.font.color
+        } : undefined;
+        targetCell.fill = cell.fill ? {
+          ...cell.fill,
+          fgColor: cell.fill.fgColor?.argb ? { argb: cell.fill.fgColor.argb } : cell.fill.fgColor,
+          bgColor: cell.fill.bgColor?.argb ? { argb: cell.fill.bgColor.argb } : cell.fill.bgColor
+        } : undefined;
+        targetCell.alignment = cell.alignment ? { ...cell.alignment } : undefined;
+        targetCell.border = cell.border ? {
+          left: cell.border.left ? { ...cell.border.left } : { style: 'none' },
+          right: cell.border.right ? { ...cell.border.right } : { style: 'none' },
+          top: cell.border.top ? { ...cell.border.top } : { style: 'none' },
+          bottom: cell.border.bottom ? { ...cell.border.bottom } : { style: 'none' }
+        } : undefined;
+        targetCell.numFmt = cell.numFmt;
+        targetCell.protection = cell.protection ? { ...cell.protection } : undefined;
+      });
+      rowIndex++;
+    }
+
+    rowIndex++;
   }
 
   await workbook.xlsx.writeFile('report.xlsx');
-
 }
 
 // Example usage
