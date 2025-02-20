@@ -89,11 +89,28 @@ function splitUsersIntoGroups(users) {
   return groups;
 }
 
-// Function to create Excel tables for each group
-function createExcelTablesForGroups(groups) {
-  Object.keys(groups).forEach(groupName => {
-    const data = groups[groupName];
-    // createXLSFile(data, `${groupName}_traffic_usage.xlsx`);
+// Function to copy merged cells
+function copyMergedCells(sourceSheet, targetSheet, rowIndex, offset) {
+  Object.keys(sourceSheet._merges).forEach(range => {
+    const merge = sourceSheet._merges[range];
+    const targetTopLeftRow = merge.tl.row + rowIndex - offset;
+    const targetTopLeftCol = merge.tl.col;
+    const targetBottomRightRow = merge.br.row + rowIndex - offset;
+    const targetBottomRightCol = merge.br.col;
+
+    // Check if the target range is already merged
+    let isAlreadyMerged = false;
+    Object.keys(targetSheet._merges).forEach(existingRange => {
+      const existingMerge = targetSheet._merges[existingRange];
+      if (existingMerge.tl.row === targetTopLeftRow && existingMerge.tl.col === targetTopLeftCol &&
+        existingMerge.br.row === targetBottomRightRow && existingMerge.br.col === targetBottomRightCol) {
+        isAlreadyMerged = true;
+      }
+    });
+
+    if (!isAlreadyMerged) {
+      // targetSheet.mergeCells(targetTopLeftRow, targetTopLeftCol, targetBottomRightRow, targetBottomRightCol);
+    }
   });
 }
 
@@ -128,32 +145,15 @@ async function generateReport(data) {
       const sourceRow = sampleSheet.getRow(i);
       const targetRow = worksheet.getRow(rowIndex);
 
+      // Copy all cells from source row to target row
       sourceRow.eachCell((cell, colNumber) => {
-        const targetCell = targetRow.getCell(colNumber);
-        targetCell.value = cell.value;
-        console.log('--',  cell.master)
-
-        // Copy individual style properties, creating new objects
-        targetCell.font = cell.font ? {
-          ...cell.font,
-          size: cell.font.size, // Ensure font size is copied
-          color: cell.font.color?.argb ? { argb: cell.font.color.argb } : cell.font.color?.theme ? { argb: 'FF000000' } : cell.font.color
-        } : undefined;
-        targetCell.fill = cell.fill ? {
-          ...cell.fill,
-          fgColor: cell.fill.fgColor?.argb ? { argb: cell.fill.fgColor.argb } : cell.fill.fgColor,
-          bgColor: cell.fill.bgColor?.argb ? { argb: cell.fill.bgColor.argb } : cell.fill.bgColor
-        } : undefined;
-        targetCell.alignment = cell.alignment ? { ...cell.alignment } : undefined;
-        targetCell.border = cell.border ? {
-          left: cell.border.left ? { ...cell.border.left } : { style: 'none' },
-          right: cell.border.right ? { ...cell.border.right } : { style: 'none' },
-          top: cell.border.top ? { ...cell.border.top } : { style: 'none' },
-          bottom: cell.border.bottom ? { ...cell.border.bottom } : { style: 'none' }
-        } : undefined;
-        targetCell.numFmt = cell.numFmt;
-        targetCell.protection = cell.protection ? { ...cell.protection } : undefined;
+        targetRow.getCell(colNumber).value = cell.value;
+        targetRow.getCell(colNumber).style = JSON.parse(JSON.stringify(cell.style)); // Deep copy of style
       });
+
+      // Copy merged cells
+      copyMergedCells(sampleSheet, worksheet, rowIndex, i);
+
       rowIndex++;
     }
 
@@ -179,31 +179,15 @@ async function generateReport(data) {
       const sourceRow = sampleSheet.getRow(i);
       const targetRow = worksheet.getRow(rowIndex);
 
+      // Copy all cells from source row to target row
       sourceRow.eachCell((cell, colNumber) => {
-        const targetCell = targetRow.getCell(colNumber);
-        targetCell.value = cell.value;
-
-        // Copy individual style properties, creating new objects
-        targetCell.font = cell.font ? {
-          ...cell.font,
-          size: cell.font.size, // Ensure font size is copied
-          color: cell.font.color?.argb ? { argb: cell.font.color.argb } : cell.font.color?.theme ? { argb: 'FF000000' } : cell.font.color
-        } : undefined;
-        targetCell.fill = cell.fill ? {
-          ...cell.fill,
-          fgColor: cell.fill.fgColor?.argb ? { argb: cell.fill.fgColor.argb } : cell.fill.fgColor,
-          bgColor: cell.fill.bgColor?.argb ? { argb: cell.fill.bgColor.argb } : cell.fill.bgColor
-        } : undefined;
-        targetCell.alignment = cell.alignment ? { ...cell.alignment } : undefined;
-        targetCell.border = cell.border ? {
-          left: cell.border.left ? { ...cell.border.left } : { style: 'none' },
-          right: cell.border.right ? { ...cell.border.right } : { style: 'none' },
-          top: cell.border.top ? { ...cell.border.top } : { style: 'none' },
-          bottom: cell.border.bottom ? { ...cell.border.bottom } : { style: 'none' }
-        } : undefined;
-        targetCell.numFmt = cell.numFmt;
-        targetCell.protection = cell.protection ? { ...cell.protection } : undefined;
+        targetRow.getCell(colNumber).value = cell.value;
+        targetRow.getCell(colNumber).style = JSON.parse(JSON.stringify(cell.style)); // Deep copy of style
       });
+
+      // Copy merged cells
+      copyMergedCells(sampleSheet, worksheet, rowIndex, i);
+
       rowIndex++;
     }
 
@@ -211,6 +195,14 @@ async function generateReport(data) {
   }
 
   await workbook.xlsx.writeFile('report.xlsx');
+}
+
+// Function to create Excel tables for each group
+function createExcelTablesForGroups(groups) {
+  Object.keys(groups).forEach(groupName => {
+    const data = groups[groupName];
+    // createXLSFile(data, `${groupName}_traffic_usage.xlsx`);
+  });
 }
 
 // Example usage
